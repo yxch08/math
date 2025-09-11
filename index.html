@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>함수 시각화 프로그램</title>
+	<style>
+		body {
+			font-family: 'Segoe UI', Arial, sans-serif;
+			background: #f7f7f7;
+			margin: 0;
+			padding: 0;
+			display: flex;
+			flex-direction: column;
+			min-height: 100vh;
+		}
+		.container {
+			display: flex;
+			flex: 1;
+			padding: 24px;
+			gap: 24px;
+			box-sizing: border-box;
+			height: 100vh;
+		}
+		.left-panel {
+			flex: 2;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			background: #fff;
+			border-radius: 16px;
+			box-shadow: 0 2px 8px #0001;
+			padding: 16px;
+			min-width: 0;
+		}
+		.right-panel {
+			flex: 1;
+			background: #fff;
+			border-radius: 16px;
+			box-shadow: 0 2px 8px #0001;
+			padding: 16px;
+			min-width: 220px;
+			display: flex;
+			flex-direction: column;
+			gap: 12px;
+		}
+		#graph-canvas {
+			background: #fafbfc;
+			border: 1px solid #ddd;
+			border-radius: 8px;
+			width: 600px;
+			height: 480px;
+			cursor: grab;
+			margin-bottom: 16px;
+			touch-action: none;
+		}
+		.input-row {
+			display: flex;
+			gap: 8px;
+			margin-bottom: 8px;
+			align-items: center;
+		}
+		.func-input {
+			font-size: 1.1em;
+			padding: 6px 10px;
+			border: 1px solid #bbb;
+			border-radius: 6px;
+			width: 260px;
+			transition: border 0.2s;
+		}
+		.func-input:focus {
+			border: 1.5px solid #0078d7;
+			outline: none;
+		}
+		.func-btns {
+			display: flex;
+			gap: 4px;
+		}
+		.func-btns button {
+			font-size: 1em;
+			padding: 4px 8px;
+			border: none;
+			background: #e3e7fa;
+			color: #2d3a5a;
+			border-radius: 4px;
+			cursor: pointer;
+			transition: background 0.2s;
+		}
+		.func-btns button:hover {
+			background: #b6c6f5;
+		}
+		.action-btns {
+			display: flex;
+			gap: 8px;
+			margin-bottom: 8px;
+		}
+		.action-btns button {
+			font-size: 1em;
+			padding: 6px 16px;
+			border: none;
+			background: #0078d7;
+			color: #fff;
+			border-radius: 6px;
+			cursor: pointer;
+			transition: background 0.2s;
+		}
+		.action-btns button:hover {
+			background: #005fa3;
+		}
+		.func-list {
+			flex: 1;
+			overflow-y: auto;
+			margin-top: 8px;
+		}
+		.func-item {
+			background: #f3f6fa;
+			border-radius: 6px;
+			padding: 8px 10px;
+			margin-bottom: 6px;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			font-size: 1.08em;
+			word-break: break-all;
+		}
+		.func-color {
+			width: 16px;
+			height: 16px;
+			border-radius: 50%;
+			margin-right: 8px;
+			display: inline-block;
+			border: 1.5px solid #bbb;
+		}
+		.remove-btn {
+			background: #ffb3b3;
+			color: #a00;
+			border: none;
+			border-radius: 4px;
+			padding: 2px 8px;
+			cursor: pointer;
+			font-size: 0.95em;
+			margin-left: 8px;
+			transition: background 0.2s;
+		}
+		.remove-btn:hover {
+			background: #ff6b6b;
+		}
+		.intersection-label {
+			position: absolute;
+			background: #fffbe7;
+			border: 1px solid #e3c800;
+			border-radius: 4px;
+			padding: 2px 8px;
+			font-size: 0.98em;
+			pointer-events: none;
+			z-index: 10;
+			box-shadow: 0 1px 4px #0002;
+		}
+		@media (max-width: 900px) {
+			.container {
+				flex-direction: column;
+				padding: 8px;
+			}
+			.left-panel, .right-panel {
+				width: 100%;
+				min-width: 0;
+			}
+			#graph-canvas {
+				width: 98vw;
+				height: 60vw;
+				min-height: 220px;
+			}
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<div class="left-panel">
+			<canvas id="graph-canvas" width="600" height="480"></canvas>
+			<div class="input-row">
+				<input id="func-input" class="func-input" placeholder="함수를 입력하세요. 예: x^2+2x-3, sin(x), log(x)" />
+				<div class="func-btns">
+					<button type="button" onclick="insertFunc('sin')">sin</button>
+					<button type="button" onclick="insertFunc('cos')">cos</button>
+					<button type="button" onclick="insertFunc('tan')">tan</button>
+					<button type="button" onclick="insertFunc('log')">log</button>
+					<button type="button" onclick="insertFunc('exp')">exp</button>
+					<button type="button" onclick="insertFunc('^')">^</button>
+				</div>
+			</div>
+			<div class="action-btns">
+				<button type="button" onclick="addFunction()">추가</button>
+				<button type="button" onclick="resetAll()">초기화</button>
+			</div>
+		</div>
+		<div class="right-panel">
+			<h3>함수 목록</h3>
+			<div id="func-list" class="func-list"></div>
+		</div>
+	</div>
+	<div id="intersection-label" class="intersection-label" style="display:none;"></div>
+	<script>
+		// 수식 파싱 및 평가를 위한 간단한 파서 (math.js 없이 구현)
+		// 실제 서비스에서는 math.js 등 라이브러리 사용 권장
+		function parseExpr(expr) {
+			// 안전하게 변환: ^ -> **, sin/cos/tan/log/exp -> Math.함수
+			let safe = expr.replace(/\^/g, '**')
+				.replace(/([a-zA-Z]+)\(/g, function(_, fn) {
+					if(['sin','cos','tan','log','exp'].includes(fn)) return 'Math.'+fn+'('; 
+					return fn+'('; 
+				})
+				.replace(/log\(/g, 'Math.log10(')
+				.replace(/([0-9])([a-zA-Z])/g, '$1*$2') // 2x -> 2*x
+				.replace(/([a-zA-Z])([0-9])/g, '$1*$2'); // x2 -> x*2
+			return safe;
+		}
+		function makeFunc(expr) {
+			const parsed = parseExpr(expr);
+			try {
+				// eslint-disable-next-line no-new-func
+				return new Function('x', 'return ' + parsed + ';');
+			} catch {
+				return null;
+			}
+		}
+		// 색상 팔레트
+		const COLORS = [
+			'#0078d7', '#e4572e', '#17bebb', '#ffc914', '#6a4c93', '#2e282a', '#ff6b6b', '#43aa8b', '#f37736', '#005fa3'
+		];
+		let functions = [];
+		let intersections = [];
+		let scale = 40; // 1단위 = 40px
+		let offsetX = 0, offsetY = 0;
+		let drag = false, lastX = 0, lastY = 0;
+		let canvas, ctx;
+		let width = 600, height = 480;
+		let minScale = 10, maxScale = 1000;
+		function draw() {
+			ctx.clearRect(0,0,width,height);
+			// 좌표계 원점
+			const cx = width/2 + offsetX;
+			const cy = height/2 + offsetY;
+			// 그리드
+			ctx.save();
+			ctx.strokeStyle = '#e0e0e0';
+			ctx.lineWidth = 1;
+			for(let x = cx%scale; x < width; x += scale) {
+				ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,height); ctx.stroke();
+			}
+			for(let y = cy%scale; y < height; y += scale) {
+				ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(width,y); ctx.stroke();
+			}
+			ctx.restore();
+			// x, y축
+			ctx.save();
+			ctx.strokeStyle = '#888';
+			ctx.lineWidth = 2;
+			ctx.beginPath(); ctx.moveTo(0,cy); ctx.lineTo(width,cy); ctx.stroke();
+			ctx.beginPath(); ctx.moveTo(cx,0); ctx.lineTo(cx,height); ctx.stroke();
+			ctx.restore();
+			// 눈금
+			ctx.save();
+			ctx.fillStyle = '#444';
+			ctx.font = '12px sans-serif';
+			for(let x = cx%scale; x < width; x += scale) {
+				let val = ((x-cx)/scale).toFixed(1);
+				if(Math.abs(val)<1e-8) continue;
+				ctx.fillText(val, x+2, cy+14);
+			}
+			for(let y = cy%scale; y < height; y += scale) {
+				let val = ((cy-y)/scale).toFixed(1);
+				if(Math.abs(val)<1e-8) continue;
+				ctx.fillText(val, cx+4, y-4);
+			}
+			ctx.restore();
+			// 함수 그래프
+			functions.forEach((f, idx) => {
+				ctx.save();
+				ctx.strokeStyle = f.color;
+				ctx.lineWidth = 2.2;
+				ctx.beginPath();
+				let first = true;
+				for(let px=0; px<=width; px+=1) {
+					let x = (px-cx)/scale;
+					let y;
+					try { y = f.fn(x); } catch { y = NaN; }
+					if(!isFinite(y)) { first=true; continue; }
+					let py = cy - y*scale;
+					if(first) { ctx.moveTo(px, py); first=false; }
+					else ctx.lineTo(px, py);
+				}
+				ctx.stroke();
+				ctx.restore();
+			});
+			// 교점
+			intersections.forEach(pt => {
+				ctx.save();
+				ctx.beginPath();
+				ctx.arc(pt.px, pt.py, 6, 0, 2*Math.PI);
+				ctx.fillStyle = '#e3c800';
+				ctx.fill();
+				ctx.strokeStyle = '#bba800';
+				ctx.lineWidth = 2;
+				ctx.stroke();
+				ctx.restore();
+			});
+		}
+		function updateFuncList() {
+			const list = document.getElementById('func-list');
+			list.innerHTML = '';
+			functions.forEach((f, idx) => {
+				const div = document.createElement('div');
+				div.className = 'func-item';
+				div.innerHTML = `<span><span class="func-color" style="background:${f.color}"></span>${f.expr}</span>` +
+					`<button class="remove-btn" onclick="removeFunction(${idx})">삭제</button>`;
+				list.appendChild(div);
+			});
+		}
+		function addFunction() {
+			const input = document.getElementById('func-input');
+			const expr = input.value.trim();
+			if(!expr) return;
+			const fn = makeFunc(expr);
+			if(!fn) { alert('함수 해석 오류!'); return; }
+			const color = COLORS[functions.length%COLORS.length];
+			functions.push({expr, fn, color});
+			input.value = '';
+			updateFuncList();
+			findIntersections();
+			draw();
+		}
+		function removeFunction(idx) {
+			functions.splice(idx,1);
+			updateFuncList();
+			findIntersections();
+			draw();
+		}
+		function resetAll() {
+			functions = [];
+			intersections = [];
+			updateFuncList();
+			draw();
+		}
+		function insertFunc(type) {
+			const input = document.getElementById('func-input');
+			let val = input.value;
+			let insert = '';
+			if(type==='^') insert = '^';
+			else if(type==='log') insert = 'log()';
+			else if(type==='exp') insert = 'exp()';
+			else insert = type+'()';
+			const pos = input.selectionStart || val.length;
+			input.value = val.slice(0,pos) + insert + val.slice(pos);
+			input.focus();
+			// 괄호 안 x 자동 선택
+			if(insert.endsWith('()')) {
+				input.setSelectionRange(pos+insert.length-1, pos+insert.length-1);
+			}
+		}
+		// 교점 찾기 (단순 근사)
+		function findIntersections() {
+			intersections = [];
+			if(functions.length<2) return;
+			for(let i=0; i<functions.length-1; ++i) {
+				for(let j=i+1; j<functions.length; ++j) {
+					for(let px=0; px<width; px+=2) {
+						let x1 = (px-width/2-offsetX)/scale;
+						let y1, y2;
+						try { y1 = functions[i].fn(x1); y2 = functions[j].fn(x1); } catch { continue; }
+						if(!isFinite(y1)||!isFinite(y2)) continue;
+						let diff = Math.abs(y1-y2);
+						if(diff<0.05) {
+							let py = height/2 + offsetY - y1*scale;
+							intersections.push({x:x1, y:y1, px, py});
+						}
+					}
+				}
+			}
+		}
+		// 교점 클릭 이벤트
+		canvasClick = function(e) {
+			const rect = canvas.getBoundingClientRect();
+			const mx = e.clientX - rect.left;
+			const my = e.clientY - rect.top;
+			for(const pt of intersections) {
+				if(Math.hypot(pt.px-mx, pt.py-my)<10) {
+					showIntersectionLabel(pt, mx, my);
+					return;
+				}
+			}
+			document.getElementById('intersection-label').style.display = 'none';
+		}
+		function showIntersectionLabel(pt, mx, my) {
+			const label = document.getElementById('intersection-label');
+			label.textContent = `(${pt.x.toFixed(4)}, ${pt.y.toFixed(4)})`;
+			label.style.left = (mx+20)+'px';
+			label.style.top = (my-10)+'px';
+			label.style.display = 'block';
+		}
+		// 확대/축소/드래그
+		function setupCanvasEvents() {
+			canvas.addEventListener('mousedown', e => {
+				drag = true; lastX = e.clientX; lastY = e.clientY;
+				canvas.style.cursor = 'grabbing';
+			});
+			window.addEventListener('mousemove', e => {
+				if(!drag) return;
+				offsetX += e.clientX - lastX;
+				offsetY += e.clientY - lastY;
+				lastX = e.clientX; lastY = e.clientY;
+				draw();
+			});
+			window.addEventListener('mouseup', e => {
+				drag = false;
+				canvas.style.cursor = 'grab';
+			});
+			canvas.addEventListener('wheel', e => {
+				e.preventDefault();
+				let oldScale = scale;
+				if(e.deltaY<0) scale *= 1.15;
+				else scale /= 1.15;
+				scale = Math.max(minScale, Math.min(maxScale, scale));
+				// 확대/축소 중심 보정
+				const rect = canvas.getBoundingClientRect();
+				const mx = e.clientX - rect.left;
+				const my = e.clientY - rect.top;
+				const x = (mx-width/2-offsetX)/oldScale;
+				const y = (height/2+offsetY-my)/oldScale;
+				offsetX += mx-width/2 - x*scale;
+				offsetY += my-height/2 + y*scale;
+				draw();
+			}, {passive:false});
+			canvas.addEventListener('click', canvasClick);
+			// 터치 지원
+			let touchStart = null;
+			canvas.addEventListener('touchstart', e => {
+				if(e.touches.length==1) {
+					drag = true;
+					lastX = e.touches[0].clientX;
+					lastY = e.touches[0].clientY;
+				} else if(e.touches.length==2) {
+					touchStart = e;
+				}
+			});
+			canvas.addEventListener('touchmove', e => {
+				if(drag && e.touches.length==1) {
+					offsetX += e.touches[0].clientX - lastX;
+					offsetY += e.touches[0].clientY - lastY;
+					lastX = e.touches[0].clientX;
+					lastY = e.touches[0].clientY;
+					draw();
+				} else if(e.touches.length==2 && touchStart) {
+					// pinch zoom
+					let d1 = Math.hypot(
+						touchStart.touches[0].clientX-touchStart.touches[1].clientX,
+						touchStart.touches[0].clientY-touchStart.touches[1].clientY
+					);
+					let d2 = Math.hypot(
+						e.touches[0].clientX-e.touches[1].clientX,
+						e.touches[0].clientY-e.touches[1].clientY
+					);
+					let factor = d2/d1;
+					scale *= factor;
+					scale = Math.max(minScale, Math.min(maxScale, scale));
+					touchStart = e;
+					draw();
+				}
+			});
+			window.addEventListener('touchend', e => {
+				drag = false;
+				touchStart = null;
+			});
+		}
+		window.onload = function() {
+			canvas = document.getElementById('graph-canvas');
+			ctx = canvas.getContext('2d');
+			width = canvas.width;
+			height = canvas.height;
+			setupCanvasEvents();
+			updateFuncList();
+			draw();
+		}
+		// 엔터로 함수 추가
+		document.addEventListener('DOMContentLoaded', function() {
+			document.getElementById('func-input').addEventListener('keydown', function(e) {
+				if(e.key==='Enter') addFunction();
+			});
+		});
+	</script>
+</html>
