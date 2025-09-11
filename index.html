@@ -322,14 +322,19 @@
 				ctx.lineWidth = 2.2;
 				ctx.beginPath();
 				let first = true;
+				let lastY = null;
 				for(let px=0; px<=width; px+=1) {
 					let x = (px-cx)/scale;
 					let y;
 					try { y = f.fn(x); } catch { y = NaN; }
-					if(!isFinite(y)) { first=true; continue; }
+					if(!isFinite(y)) { first=true; lastY=null; continue; }
 					let py = cy - y*scale;
-					if(first) { ctx.moveTo(px, py); first=false; }
-					else ctx.lineTo(px, py);
+					if(first || lastY === null || Math.abs(py - lastY) > 100) { // 점근선 방지: y값이 급격히 튀면 선을 끊음
+						ctx.moveTo(px, py); first=false;
+					} else {
+						ctx.lineTo(px, py);
+					}
+					lastY = py;
 				}
 				ctx.stroke();
 				ctx.restore();
@@ -410,6 +415,7 @@
 			const cy = height/2 + offsetY;
 			for(let i=0; i<functions.length-1; ++i) {
 				for(let j=i+1; j<functions.length; ++j) {
+					let lastX = null, lastY = null;
 					for(let px=0; px<width; px+=2) {
 						let x1 = (px-cx)/scale;
 						let y1, y2;
@@ -417,8 +423,12 @@
 						if(!isFinite(y1)||!isFinite(y2)) continue;
 						let diff = Math.abs(y1-y2);
 						if(diff<0.05) {
-							let py = cy - y1*scale;
-							intersections.push({x:x1, y:y1, px, py});
+							// 중복 교점 방지: 이미 가까운 곳에 교점이 있으면 추가하지 않음
+							let isNear = intersections.some(pt => Math.abs(pt.x - x1) < 0.05 && Math.abs(pt.y - y1) < 0.05);
+							if(!isNear) {
+								let py = cy - y1*scale;
+								intersections.push({x:x1, y:y1, px, py});
+							}
 						}
 					}
 				}
