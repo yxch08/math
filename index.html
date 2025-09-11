@@ -17,7 +17,7 @@
 		.container {
 			display: flex;
 			flex: 1;
-			padding: 24px;
+			padding: 24px 64px 24px 24px;
 			gap: 24px;
 			box-sizing: border-box;
 			height: 100vh;
@@ -35,7 +35,8 @@
 			position: relative;
 		}
 		.right-panel {
-			flex: 1;
+			flex: none;
+			width: 270px;
 			background: #fff;
 			border-radius: 16px;
 			box-shadow: 0 2px 8px #0001;
@@ -44,6 +45,7 @@
 			display: flex;
 			flex-direction: column;
 			gap: 12px;
+			margin-left: 32px;
 		}
 		#graph-canvas {
 			background: #fafbfc;
@@ -132,6 +134,56 @@
 		.action-btns button:hover {
 			background: linear-gradient(90deg,#005fa3 60%,#2e8b6a 100%);
 		}
+		/* 함수 목록 창 디자인 복원 */
+		.func-list {
+			flex: 1;
+			overflow-y: auto;
+			margin-top: 8px;
+		}
+		.func-item {
+			background: #f3f6fa;
+			border-radius: 6px;
+			padding: 8px 10px;
+			margin-bottom: 6px;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			font-size: 1.08em;
+			word-break: break-all;
+		}
+		.func-color {
+			width: 16px;
+			height: 16px;
+			border-radius: 50%;
+			margin-right: 8px;
+			display: inline-block;
+			border: 1.5px solid #bbb;
+		}
+		.remove-btn {
+			background: #ffb3b3;
+			color: #a00;
+			border: none;
+			border-radius: 4px;
+			padding: 2px 8px;
+			cursor: pointer;
+			font-size: 0.95em;
+			margin-left: 8px;
+			transition: background 0.2s;
+		}
+		.remove-btn:hover {
+			background: #ff6b6b;
+		}
+		.intersection-label {
+			position: absolute;
+			background: #fffbe7;
+			border: 1px solid #e3c800;
+			border-radius: 4px;
+			padding: 2px 8px;
+			font-size: 0.98em;
+			pointer-events: none;
+			z-index: 10;
+			box-shadow: 0 1px 4px #0002;
+		}
 		@media (max-width: 1200px) {
 			#graph-canvas {
 				width: 98vw;
@@ -143,6 +195,10 @@
 			}
 			.func-input {
 				width: 160px;
+			}
+			.right-panel {
+				margin-left: 0;
+				width: 100vw;
 			}
 		}
 	</style>
@@ -213,11 +269,13 @@
 		let width = 600, height = 480;
 		let minScale = 10, maxScale = 1000;
 		function draw() {
+			canvas = document.getElementById('graph-canvas');
+			ctx = canvas.getContext('2d');
+			width = canvas.width;
+			height = canvas.height;
 			ctx.clearRect(0,0,width,height);
-			// 좌표계 원점
 			const cx = width/2 + offsetX;
 			const cy = height/2 + offsetY;
-			// 그리드
 			ctx.save();
 			ctx.strokeStyle = '#e0e0e0';
 			ctx.lineWidth = 1;
@@ -228,9 +286,9 @@
 				ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(width,y); ctx.stroke();
 			}
 			ctx.restore();
-			// x, y축
+			// x, y축 (검정색)
 			ctx.save();
-			ctx.strokeStyle = '#0078d7';
+			ctx.strokeStyle = '#222';
 			ctx.lineWidth = 3.2;
 			ctx.beginPath(); ctx.moveTo(0,cy); ctx.lineTo(width,cy); ctx.stroke();
 			ctx.beginPath(); ctx.moveTo(cx,0); ctx.lineTo(cx,height); ctx.stroke();
@@ -243,7 +301,6 @@
 			ctx.lineWidth = 2;
 			ctx.stroke();
 			ctx.restore();
-			// 눈금
 			ctx.save();
 			ctx.fillStyle = '#444';
 			ctx.font = '12px sans-serif';
@@ -346,16 +403,21 @@
 		function findIntersections() {
 			intersections = [];
 			if(functions.length<2) return;
+			canvas = document.getElementById('graph-canvas');
+			width = canvas.width;
+			height = canvas.height;
+			const cx = width/2 + offsetX;
+			const cy = height/2 + offsetY;
 			for(let i=0; i<functions.length-1; ++i) {
 				for(let j=i+1; j<functions.length; ++j) {
 					for(let px=0; px<width; px+=2) {
-						let x1 = (px-width/2-offsetX)/scale;
+						let x1 = (px-cx)/scale;
 						let y1, y2;
 						try { y1 = functions[i].fn(x1); y2 = functions[j].fn(x1); } catch { continue; }
 						if(!isFinite(y1)||!isFinite(y2)) continue;
 						let diff = Math.abs(y1-y2);
 						if(diff<0.05) {
-							let py = height/2 + offsetY - y1*scale;
+							let py = cy - y1*scale;
 							intersections.push({x:x1, y:y1, px, py});
 						}
 					}
@@ -393,6 +455,7 @@
 				offsetX += e.clientX - lastX;
 				offsetY += e.clientY - lastY;
 				lastX = e.clientX; lastY = e.clientY;
+				findIntersections();
 				draw();
 			});
 			window.addEventListener('mouseup', e => {
@@ -400,13 +463,12 @@
 				canvas.style.cursor = 'grab';
 			});
 			canvas.addEventListener('wheel', e => {
-				if (!e.ctrlKey) return; // Ctrl 키가 아닐 때는 무시
+				if (!e.ctrlKey) return;
 				e.preventDefault();
 				let oldScale = scale;
 				if(e.deltaY<0) scale *= 1.15;
 				else scale /= 1.15;
 				scale = Math.max(minScale, Math.min(maxScale, scale));
-				// 확대/축소 중심 보정
 				const rect = canvas.getBoundingClientRect();
 				const mx = e.clientX - rect.left;
 				const my = e.clientY - rect.top;
@@ -414,6 +476,7 @@
 				const y = (height/2+offsetY-my)/oldScale;
 				offsetX += mx-width/2 - x*scale;
 				offsetY += my-height/2 + y*scale;
+				findIntersections();
 				draw();
 			}, {passive:false});
 			canvas.addEventListener('click', canvasClick);
@@ -434,6 +497,7 @@
 					offsetY += e.touches[0].clientY - lastY;
 					lastX = e.touches[0].clientX;
 					lastY = e.touches[0].clientY;
+					findIntersections();
 					draw();
 				} else if(e.touches.length==2 && touchStart) {
 					// pinch zoom
@@ -449,6 +513,7 @@
 					scale *= factor;
 					scale = Math.max(minScale, Math.min(maxScale, scale));
 					touchStart = e;
+					findIntersections();
 					draw();
 				}
 			});
@@ -464,6 +529,7 @@
 			height = canvas.height;
 			setupCanvasEvents();
 			updateFuncList();
+			findIntersections();
 			draw();
 		}
 		// 엔터로 함수 추가
