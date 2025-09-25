@@ -359,8 +359,10 @@
 			functions.forEach((f, idx) => {
 				const div = document.createElement('div');
 				div.className = 'func-item';
-				div.innerHTML = `<span><span class="func-color" style="background:${f.color}"></span>${f.expr}</span>` +
-					`<button class="remove-btn" onclick="removeFunction(${idx})">삭제</button>`;
+				div.innerHTML =
+				 `<span><span class="func-color" style="background:${f.color}"></span>${f.expr}</span>` +
+				 `<button class="remove-btn" onclick="removeFunction(${idx})">삭제</button>` +
+				 `<button class="remove-btn" style="background:#b3e3ff;color:#1769aa;margin-left:4px;" onclick="addDerivative(${idx})">미분</button>`;
 				list.appendChild(div);
 			});
 		}
@@ -477,7 +479,13 @@
 		}
 		function showIntersectionLabel(pt, mx, my) {
 			const label = document.getElementById('intersection-label');
-			label.textContent = `(${formatPi(pt.x)}, ${pt.y.toFixed(4)})`;
+			const xLabel = formatPi(pt.x);
+			if (xLabel === pt.x.toFixed(4)) {
+				// 근사값이면 라벨 숨김
+				label.style.display = 'none';
+				return;
+			}
+			label.textContent = `(${xLabel}, ${pt.y.toFixed(4)})`;
 			label.style.left = (mx+20)+'px';
 			label.style.top = (my-10)+'px';
 			label.style.display = 'block';
@@ -602,6 +610,24 @@
 		function moveToOrigin() {
 			offsetX = 0;
 			offsetY = 0;
+			findIntersections();
+			draw();
+		}
+		// 도함수 추가 함수
+		function addDerivative(idx) {
+			const f = functions[idx];
+			// 수치 미분 함수 생성 (중앙차분법)
+			const h = 1e-5;
+			const df = function(x) {
+				return (f.fn(x+h)-f.fn(x-h))/(2*h);
+			};
+			// 도함수 색상: 기존 색상과 다르게, 파란색 계열로 고정
+			const color = '#1769aa';
+			// 이미 같은 도함수가 추가되어 있으면 중복 추가 방지
+			const expr = f.expr + '의 도함수';
+			if (functions.some(ff => ff.expr === expr)) return;
+			functions.push({expr, fn: df, color});
+			updateFuncList();
 			findIntersections();
 			draw();
 		}
