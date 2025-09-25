@@ -476,18 +476,22 @@
 				if (!e.ctrlKey) return;
 				e.preventDefault();
 				let oldScale = scale;
-				if(e.deltaY<0) scale *= 1.15;
-				else scale /= 1.15;
-				scale = Math.max(minScale, Math.min(maxScale, scale));
-				const rect = canvas.getBoundingClientRect();
-				const mx = e.clientX - rect.left;
-				const my = e.clientY - rect.top;
-				const x = (mx-width/2-offsetX)/oldScale;
-				const y = (height/2+offsetY-my)/oldScale;
-				offsetX += mx-width/2 - x*scale;
-				offsetY += my-height/2 + y*scale;
-				findIntersections();
-				draw();
+				let newScale = scale;
+				if(e.deltaY<0) newScale = scale * 1.15;
+				else newScale = scale / 1.15;
+				newScale = Math.max(minScale, Math.min(maxScale, newScale));
+				if (newScale !== scale) {
+					const rect = canvas.getBoundingClientRect();
+					const mx = e.clientX - rect.left;
+					const my = e.clientY - rect.top;
+					const x = (mx-width/2-offsetX)/scale;
+					const y = (height/2+offsetY-my)/scale;
+					scale = newScale;
+					offsetX += mx-width/2 - x*scale;
+					offsetY += my-height/2 + y*scale;
+					findIntersections();
+					draw();
+				}
 			}, {passive:false});
 			canvas.addEventListener('click', canvasClick);
 			// 터치 지원
