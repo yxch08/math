@@ -228,6 +228,7 @@
 			<div class="action-btns">
 				<button type="button" onclick="addFunction()">추가</button>
 				<button type="button" onclick="resetAll()">초기화</button>
+				<button type="button" onclick="moveToOrigin()">원점</button>
 			</div>
 		</div>
 	</div>
@@ -477,10 +478,17 @@
 				e.preventDefault();
 				let oldScale = scale;
 				let newScale = scale;
-				if(e.deltaY<0) newScale = scale * 1.15;
-				else newScale = scale / 1.15;
+				if(e.deltaY<0) {
+					// 확대
+					newScale = scale * 1.15;
+				} else {
+					// 축소
+					newScale = scale / 1.15;
+				}
+				// 최소/최대 스케일 제한
 				newScale = Math.max(minScale, Math.min(maxScale, newScale));
-				if (newScale !== scale) {
+				// 축소 시에도 scale이 변하도록 수정
+				if (Math.abs(newScale - scale) > 1e-2) {
 					const rect = canvas.getBoundingClientRect();
 					const mx = e.clientX - rect.left;
 					const my = e.clientY - rect.top;
@@ -552,5 +560,11 @@
 				if(e.key==='Enter') addFunction();
 			});
 		});
+		function moveToOrigin() {
+			offsetX = 0;
+			offsetY = 0;
+			findIntersections();
+			draw();
+		}
 	</script>
 </html>
