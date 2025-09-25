@@ -479,13 +479,10 @@
 		}
 		function showIntersectionLabel(pt, mx, my) {
 			const label = document.getElementById('intersection-label');
-			const xLabel = formatPi(pt.x);
-			if (xLabel === pt.x.toFixed(4)) {
-				// 근사값이면 라벨 숨김
-				label.style.display = 'none';
-				return;
+			function formatNum(n) {
+				return Number.isInteger(n) ? n : n.toFixed(8);
 			}
-			label.textContent = `(${xLabel}, ${pt.y.toFixed(4)})`;
+			label.textContent = `(${formatNum(pt.x)}, ${formatNum(pt.y)})`;
 			label.style.left = (mx+20)+'px';
 			label.style.top = (my-10)+'px';
 			label.style.display = 'block';
@@ -630,6 +627,9 @@
 			updateFuncList();
 			findIntersections();
 			draw();
+		}
+	</script>
+</html>
 		}
 	</script>
 </html>
