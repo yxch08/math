@@ -345,9 +345,9 @@
 				ctx.save();
 				ctx.beginPath();
 				ctx.arc(pt.px, pt.py, 6, 0, 2*Math.PI);
-				ctx.fillStyle = '#e3c800';
+				ctx.fillStyle = '#2196f3'; // 교점 점 색깔을 파란색으로 변경
 				ctx.fill();
-				ctx.strokeStyle = '#bba800';
+				ctx.strokeStyle = '#1769aa'; // 테두리도 파란색 계열로 변경
 				ctx.lineWidth = 2;
 				ctx.stroke();
 				ctx.restore();
@@ -405,7 +405,7 @@
 				input.setSelectionRange(pos+insert.length-1, pos+insert.length-1);
 			}
 		}
-		// 교점 찾기 (단순 근사)
+		// 교점 찾기 (이분법으로 정확하게)
 		function findIntersections() {
 			intersections = [];
 			if(functions.length<2) return;
@@ -414,23 +414,50 @@
 			height = canvas.height;
 			const cx = width/2 + offsetX;
 			const cy = height/2 + offsetY;
+			const xMin = -(cx)/scale;
+			const xMax = (width-cx)/scale;
+			const step = (xMax-xMin)/width * 4; // 4픽셀 단위로 샘플링
 			for(let i=0; i<functions.length-1; ++i) {
 				for(let j=i+1; j<functions.length; ++j) {
-					let lastX = null, lastY = null;
-					for(let px=0; px<width; px+=2) {
-						let x1 = (px-cx)/scale;
+					let f1 = functions[i].fn, f2 = functions[j].fn;
+					let prevX = xMin, prevDiff = null;
+					for(let x=xMin; x<=xMax; x+=step) {
 						let y1, y2;
-						try { y1 = functions[i].fn(x1); y2 = functions[j].fn(x1); } catch { continue; }
+						try { y1 = f1(x); y2 = f2(x); } catch { continue; }
 						if(!isFinite(y1)||!isFinite(y2)) continue;
-						let diff = Math.abs(y1-y2);
-						if(diff<0.05) {
-							// 중복 교점 방지: 이미 가까운 곳에 교점이 있으면 추가하지 않음
-							let isNear = intersections.some(pt => Math.abs(pt.x - x1) < 0.05 && Math.abs(pt.y - y1) < 0.05);
-							if(!isNear) {
-								let py = cy - y1*scale;
-								intersections.push({x:x1, y:y1, px, py});
+						let diff = y1-y2;
+						if(prevDiff !== null && diff*prevDiff < 0) {
+							// 근이 존재: 이분법으로 교점 근사
+							let xLeft = prevX, xRight = x;
+							let yLeft = f1(xLeft)-f2(xLeft), yRight = diff;
+							let xRoot = null;
+							for(let k=0;k<20;k++) { // 20회 반복으로 충분히 근사
+								let xMid = (xLeft+xRight)/2;
+								let yMid;
+								try { yMid = f1(xMid)-f2(xMid); } catch { break; }
+								if(!isFinite(yMid)) break;
+								if(Math.abs(yMid)<1e-7) { xRoot = xMid; break; }
+								if(yLeft*yMid<0) {
+									xRight = xMid; yRight = yMid;
+								} else {
+									xLeft = xMid; yLeft = yMid;
+								}
+								xRoot = xMid;
+							}
+							if(xRoot !== null) {
+								let yRoot;
+								try { yRoot = f1(xRoot); } catch { yRoot = 0; }
+								// 중복 교점 방지
+								let isNear = intersections.some(pt => Math.abs(pt.x - xRoot) < 0.02 && Math.abs(pt.y - yRoot) < 0.02);
+								if(!isNear) {
+									let px = cx + xRoot*scale;
+									let py = cy - yRoot*scale;
+									intersections.push({x:xRoot, y:yRoot, px, py});
+								}
 							}
 						}
+						prevX = x;
+						prevDiff = diff;
 					}
 				}
 			}
@@ -450,10 +477,22 @@
 		}
 		function showIntersectionLabel(pt, mx, my) {
 			const label = document.getElementById('intersection-label');
-			label.textContent = `(${pt.x.toFixed(4)}, ${pt.y.toFixed(4)})`;
+			label.textContent = `(${formatPi(pt.x)}, ${pt.y.toFixed(4)})`;
 			label.style.left = (mx+20)+'px';
 			label.style.top = (my-10)+'px';
 			label.style.display = 'block';
+		}
+		// x값을 π로 표현하는 함수 추가
+		function formatPi(x) {
+			const pi = Math.PI;
+			const epsilon = 0.01;
+			let n = Math.round(x/pi);
+			if(Math.abs(x - n*pi) < epsilon && n !== 0) {
+				if(n === 1) return 'π';
+				else if(n === -1) return '-π';
+				else return n + 'π';
+			}
+			return x.toFixed(4);
 		}
 		// 확대/축소/드래그
 		function setupCanvasEvents() {
